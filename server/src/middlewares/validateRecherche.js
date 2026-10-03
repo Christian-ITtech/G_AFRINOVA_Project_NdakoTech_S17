@@ -41,21 +41,29 @@ export default function validateRecherche(req, res, next) {
 
   // Eau courante : optionnel
   let eau_courante = null;
-  const eauCourante = texte(req.query.eau_courante);
-  if (eauCourante) {
-    eau_courante = eauCourante === 'true';
-  } else if (eauCourante === 'false') {
-    erreurs.eau_courante = 'Ce logement n\'a pas d\'eau courante.';
+  if (req.query.eau_courante !== undefined) {
+  const val = texte(req.query.eau_courante).toLowerCase();
+  if (val === 'true') {
+    eau_courante = true;
+  } else if (val === 'false') {
+    eau_courante = false;
+  } else {
+    erreurs.eau_courante = 'Valeur attendue : true ou false.';
   }
+}
 
   // Compteur électrique : optionnel
   let compteur_electrique = null;
-  const compteurElectrique = texte(req.query.compteur_electrique);
-  if (compteurElectrique) {
-    compteur_electrique = compteurElectrique === 'true';
-  } else if (compteurElectrique === 'false') {
-    erreurs.compteur_electrique = 'Ce logement n\'a pas de compteur électrique.';
+  if (req.query.compteur_electrique !== undefined) {
+  const val = texte(req.query.compteur_electrique).toLowerCase();
+  if (val === 'true') {
+    compteur_electrique = true;
+  } else if (val === 'false') {
+    compteur_electrique = false;
+  } else {
+    erreurs.compteur_electrique = 'Valeur attendue : true ou false.';
   }
+}
 
   let type_bien = null;
   const typeBien = texte(req.query.type_bien);
