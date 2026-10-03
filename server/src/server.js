@@ -1,20 +1,20 @@
-const dotenv = require("dotenv").config();
+// dotenv doit rester le PREMIER import : il charge le .env avant que
+// app.js et database.js ne lisent process.env
+import 'dotenv/config';
 
-const express = require("express");
-const cors = require("cors");
+import app from './app.js';
+import pool from './config/database.js';
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL }));
-app.use(express.json());
-
-// cet Route est juste pour tester la communication entre le client et le serveur
-app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Bonjour depuis Express !' });
-});
-
- // Lancement
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
+
+  // Test de la connexion à la base au démarrage
+  try {
+    const res = await pool.query('SELECT NOW()');
+    console.log('Connexion à la base de données réussie', res.rows[0]);
+  } catch (err) {
+    console.error('Erreur de connexion à la base de données :', err.message);
+  }
 });
