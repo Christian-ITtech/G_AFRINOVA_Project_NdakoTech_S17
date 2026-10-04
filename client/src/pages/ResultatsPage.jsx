@@ -1,77 +1,88 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import SearchForm from '../components/SearchForm';
+import { fetchRecherche, fetchTous } from '../api/logements';
 import LogementCard from '../components/LogementCard';
-import { fetchRecherche } from '../api/logements';
 
 export default function ResultatsPage() {
-  const [params, setParams] = useSearchParams();
-  const ville = params.get('ville') || '';
-  const quartier = params.get('quartier') || '';
-  const loyerMax = params.get('loyer_max') || '';
-  const tri = params.get('tri') || '';
-
+  // 1. Outil pour aller lire les filtres écrits dans l'URL (?ville=...&type_bien=...)
+  const [searchParams] = useSearchParams();
   const [logements, setLogements] = useState([]);
-  const [chargement, setChargement] = useState(false);
-  const [message, setMessage] = useState('');
-  const [erreur, setErreur] = useState('');
+  const [chargement, setChargement] = useState(true);
+
+  // 2. NOUVEL ÉTAT : Pour retenir le choix du tri de l'utilisateur (ex: croissant, décroissant)
+  const [tri, setTri] = useState(''); 
 
   useEffect(() => {
-    if (!ville) return;
-    let actif = true;
     setChargement(true);
-    setErreur('');
-    fetchRecherche({ ville, quartier, loyer_max: loyerMax, tri })
-      .then((r) => {
-        if (!actif) return;
-        setLogements(r.logements);
-        setMessage(r.message || '');
-      })
-      .catch((err) => actif && setErreur(err.message))
-      .finally(() => actif && setChargement(false));
-    return () => { actif = false; };
-  }, [ville, quartier, loyerMax, tri]);
+    
+    // On extrait l'action spéciale "lister tout" ou les filtres classiques
+    const action = searchParams.get('action');
+    
+    if (action === 'tous') {
+      // Cas du bouton "Voir tous les logements"
+      fetchTous()
+        .then((data) => setLogements(data))
+        .catch((err) => console.error(err))
+        .finally(() => setChargement(false));
+    } else {
+      // Cas de la recherche filtrée par Ville, Quartier, Type, Eau, Électricité
+      const filtres = {
+        ville: searchParams.get('ville'),
+        quartier: searchParams.get('quartier'),
+        type_bien: searchParams.get('type_bien'),
+        loyer_max: searchParams.get('loyer_max'),
+        eau_courante: searchParams.get('eau_courante'),
+        compteur_electrique: searchParams.get('compteur_electrique'),
+      };
 
-  function changerTri(e) {
-    const suivant = new URLSearchParams(params);
-    if (e.target.value) suivant.set('tri', e.target.value);
-    else suivant.delete('tri');
-    setParams(suivant);
-  }
+      fetchRecherche(filtres)
+        .then((data) => setLogements(data.logements)) // data.logements contient le tableau normalisé
+        .catch((err) => console.error(err))
+        .finally(() => setChargement(false));
+    }
+  }, [searchParams]); // On rejoue dès que l'URL change
+
+  // =========================================================================
+  // 3. LA LOGIQUE DE TRI CÔTÉ FRONTEND (JavaScript)
+  // =========================================================================
+  // On crée une copie du tableau et on applique un tri dynamique selon l'état `tri`
+  const logementsTries = [...logements].sort((a, b) => {
+    if (tri === 'croissant') return a.loyer - b.loyer;       // Du moins cher au plus cher
+    if (tri === 'decroissant') return b.loyer - a.loyer;     // Du plus cher au moins cher
+    return 0; // Aucun tri par défaut (conserve l'ordre de la BDD)
+  });
+
+  if (chargement) return <p>Chargement des logements...</p>;
 
   return (
-    <div className="section">
-      <div className="container">
-        <h1 className="section-titre">Résultats de recherche</h1>
-        <p className="section-sous-titre">Modifiez vos critères ci-dessous</p>
+    <div className="page-resultats">
+      
+      {/* BARRE DE TRI HAUTE (Fait écho à la classe ".resultats-entete" de votre CSS) */}
+      
+      <div className="resultats-entete">
+        
+        <h2>{logementsTries.length} logement(s) trouvé(s)</h2>
+        
 
-        <SearchForm key={`${ville}|${quartier}|${loyerMax}`} initial={{ ville, quartier, loyer_max: loyerMax }} />
-
-        {!ville && <p className="message-vide">Choisissez une ville pour lancer la recherche.</p>}
-        {chargement && <p className="message-vide">Chargement…</p>}
-        {erreur && <p className="message-vide champ-erreur">{erreur}</p>}
-
-        {ville && !chargement && !erreur && logements.length === 0 && (
-          <p className="message-vide">
-            {message || 'Aucun logement ne correspond à vos critères.'}
-          </p>
-        )}
-
-        {logements.length > 0 && (
-          <>
-            <div className="resultats-entete">
-              <p>{logements.length} logement{logements.length > 1 ? 's' : ''} trouvé{logements.length > 1 ? 's' : ''}</p>
-              <select value={tri} onChange={changerTri} aria-label="Trier les résultats">
-                <option value="">Tri par défaut</option>
-                <option value="loyer_asc">Loyer croissant</option>
-              </select>
-            </div>
-            <div className="grille-logements">
-              {logements.map((l) => <LogementCard key={l.id} logement={l} />)}
-            </div>
-          </>
-        )}
+        {/* Le sélecteur de tri qui modifie l'état `tri` au changement */}
+        <select value={tri} onChange={(e) => setTri(e.target.value)}>
+          <option value="">Tri par défaut</option>
+          <option value="croissant">Loyer : Croissant</option>
+          <option value="decroissant">Loyer : Décroissant</option>
+        </select>
       </div>
+
+      {/* AFFICHAGE DE LA GRILLE DES CARTES */}
+      {logementsTries.length === 0 ? (
+        <p className="message-vide">Aucun logement ne correspond à vos critères de confort.</p>
+      ) : (
+        <div className="grille-logements">
+          {logementsTries.map((logement) => (
+            <LogementCard key={logement.id} logement={logement} />
+          ))}
+        </div>
+      )}
+      
     </div>
   );
 }
