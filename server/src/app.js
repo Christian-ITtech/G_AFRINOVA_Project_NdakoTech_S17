@@ -14,7 +14,15 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(express.json());
 
 // Images locales : server/public/images -> http://localhost:5000/images/...
-app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')));
+// app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')));
+// On cible directement le dossier public/images situé à l'intérieur de src/
+app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+
+// // CORRECTION BACKEND ULTIME : Donne l'accès au dossier d'images peu importe où il est placé
+// app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+// app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')));
+// app.use('/images', express.static(path.join(process.cwd(), 'public', 'images')));
+// app.use('/images', express.static(path.join(process.cwd(), 'src', 'public', 'images')));
 
 app.use('/api', routes);
 

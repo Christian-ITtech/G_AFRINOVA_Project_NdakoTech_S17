@@ -4,6 +4,14 @@ import SearchForm from '../components/SearchForm';
 import LogementCard from '../components/LogementCard';
 import { fetchTous } from '../api/logements';
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHouse, faPhone, faMagnifyingGlass} from '@fortawesome/free-solid-svg-icons';
+
+
+
+
+
+
 export default function HomePage() {
   const [verifies, setVerifies] = useState([]);
 
@@ -45,17 +53,17 @@ export default function HomePage() {
           <p className="section-sous-titre">Simple, transparent, sans commission.</p>
           <div className="etapes">
             <div className="etape">
-              <div className="etape-icone"><span className="etape-numero">1</span></div>
+              <div className="etape-icone"><FontAwesomeIcon icon={faMagnifyingGlass} /><span className="etape-numero">1</span></div>
               <h3>Recherchez</h3>
               <p>Choisissez une ville, un quartier et votre budget.</p>
             </div>
             <div className="etape">
-              <div className="etape-icone"><span className="etape-numero">2</span></div>
+              <div className="etape-icone"><FontAwesomeIcon icon={faHouse} /><span className="etape-numero">2</span></div>
               <h3>Consultez</h3>
               <p>Photos, loyer réel, équipements et statut daté.</p>
             </div>
             <div className="etape">
-              <div className="etape-icone"><span className="etape-numero">3</span></div>
+              <div className="etape-icone"><FontAwesomeIcon icon={faPhone} /><span className="etape-numero">3</span></div>
               <h3>Contactez</h3>
               <p>Appelez ou écrivez directement au gestionnaire. Aucun intermédiaire.</p>
             </div>

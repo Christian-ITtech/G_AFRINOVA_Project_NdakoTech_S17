@@ -50,8 +50,8 @@ export default function PublierPage() {
           </div>
 
           <div className="cases">
-            <label><input type="checkbox" /> 💧 Eau courante</label>
-            <label><input type="checkbox" /> ⚡ Compteur électrique</label>
+            <label><input type="checkbox" /> Eau courante</label>
+            <label><input type="checkbox" /> Compteur électrique</label>
           </div>
 
           <div className="champ">
@@ -66,7 +66,7 @@ export default function PublierPage() {
 
           <div className="champ">
             <label htmlFor="p-photos">Photos</label>
-            <input id="p-photos" type="file" accept="image/*" multiple />
+            <input id="p-photos"  type="file" accept="image/*" multiple />
           </div>
 
           {message && <p className="notice" role="status">{message}</p>}

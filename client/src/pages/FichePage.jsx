@@ -53,7 +53,7 @@ export default function FichePage() {
 
           <h1>{l.titre}</h1>
           <p className="fiche-lieu">
-            📍 {l.quartier || 'Quartier non renseigné'}, {l.ville} · {libelleType(l.typeBien)}
+             {l.quartier || 'Quartier non renseigné'}, {l.ville} · {libelleType(l.typeBien)}
           </p>
           {l.adresse && <p className="fiche-note">Adresse : {l.adresse}</p>}
 
@@ -66,8 +66,8 @@ export default function FichePage() {
 
           <h2>Équipements</h2>
           <ul className="fiche-liste">
-            <li>{l.eau ? '💧 Eau courante' : '✗ Pas d\'eau courante'}</li>
-            <li>{l.electricite ? '⚡ Compteur électrique' : '✗ Pas de compteur électrique'}</li>
+            <li>{l.eau ? ' Eau courante' : '✗ Pas d\'eau courante'}</li>
+            <li>{l.electricite ? ' Compteur électrique' : '✗ Pas de compteur électrique'}</li>
             <li>{l.cautionMois != null ? `Caution : ${l.cautionMois} mois de loyer` : l.messageCaution || 'Caution à confirmer'}</li>
             {l.coutEntree != null && <li>Coût d'entrée (loyer + caution) : {formatLoyer(l.coutEntree)}</li>}
           </ul>

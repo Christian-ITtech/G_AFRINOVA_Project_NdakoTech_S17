@@ -1,135 +1,60 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import { fetchHello } from './api/hello'
-import './App.css'
-import { useEffect } from 'react'
+// =========================================================================
+// 1. LES IMPORTATIONS DES OUTILS DE NAVIGATION
+// =========================================================================
+// - Routes : C'est le conteneur principal qui examine l'adresse URL actuelle du navigateur.
+// - Route : C'est une règle d'aiguillage individuelle (Si l'URL est 'X', alors affiche le composant 'Y').
+import { Routes, Route } from 'react-router-dom';
 
-// function App() {
-//   const [count, setCount] = useState(0)
+// =========================================================================
+// 2. LES IMPORTATIONS DE VOS COMPOSANTS ET PAGES
+// =========================================================================
+import Layout from './components/Layout';               // Le squelette commun (Navbar + Footer)
+import HomePage from './pages/HomePage';                 // Page d'accueil (avec le formulaire de recherche)
+import ResultatsPage from './pages/ResultatsPage';       // Page qui liste les logements trouvés
+import FichePage from './pages/FichePage';               // Page de détails d'un logement (avec la galerie photo)
+import PublierPage from './pages/PublierPage';           // Page de formulaire pour ajouter un logement
+import InscriptionPage from './pages/InscriptionPage';   // Page de création de compte pour les gestionnaires
 
-//   return (
-//     <>
-//       <section id="center">
-//         <div className="hero">
-//           <img src={heroImg} className="base" width="170" height="179" alt="" />
-//           <img src={reactLogo} className="framework" alt="React logo" />
-//           <img src={viteLogo} className="vite" alt="Vite logo" />
-//         </div>
-//         <div>
-//           <h1>Get started</h1>
-//           <p>
-//             Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-//           </p>
-//         </div>
-//         <button
-//           type="button"
-//           className="counter"
-//           onClick={() => setCount((count) => count + 1)}
-//         >
-//           Count is {count}
-//         </button>
-//       </section>
-
-//       <div className="ticks"></div>
-
-//       <section id="next-steps">
-//         <div id="docs">
-//           <svg className="icon" role="presentation" aria-hidden="true">
-//             <use href="/icons.svg#documentation-icon"></use>
-//           </svg>
-//           <h2>Documentation</h2>
-//           <p>Your questions, answered</p>
-//           <ul>
-//             <li>
-//               <a href="https://vite.dev/" target="_blank">
-//                 <img className="logo" src={viteLogo} alt="" />
-//                 Explore Vite
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://react.dev/" target="_blank">
-//                 <img className="button-icon" src={reactLogo} alt="" />
-//                 Learn more
-//               </a>
-//             </li>
-//           </ul>
-//         </div>
-//         <div id="social">
-//           <svg className="icon" role="presentation" aria-hidden="true">
-//             <use href="/icons.svg#social-icon"></use>
-//           </svg>
-//           <h2>Connect with us</h2>
-//           <p>Join the Vite community</p>
-//           <ul>
-//             <li>
-//               <a href="https://github.com/vitejs/vite" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#github-icon"></use>
-//                 </svg>
-//                 GitHub
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://chat.vite.dev/" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#discord-icon"></use>
-//                 </svg>
-//                 Discord
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://x.com/vite_js" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#x-icon"></use>
-//                 </svg>
-//                 X.com
-//               </a>
-//             </li>
-//             <li>
-//               <a href="https://bsky.app/profile/vite.dev" target="_blank">
-//                 <svg
-//                   className="button-icon"
-//                   role="presentation"
-//                   aria-hidden="true"
-//                 >
-//                   <use href="/icons.svg#bluesky-icon"></use>
-//                 </svg>
-//                 Bluesky
-//               </a>
-//             </li>
-//           </ul>
-//         </div>
-//       </section>
-
-//       <div className="ticks"></div>
-//       <section id="spacer"></section>
-//     </>
-//   )
-// }
+// =========================================================================
+// 3. LE COMPOSANT PRINCIPAL (Le centre d'aiguillage)
+// =========================================================================
 function App() {
-  const [message, setMessage] = useState('Chargement...');
-
-  useEffect(() => {
-    fetchHello()
-      .then((data) => setMessage(data.message))
-      .catch(() => setMessage('Erreur : le serveur ne répond pas'));
-  }, []);
-
-  return <h1>{message}</h1>;
+  return (
+    // <Routes> surveille l'URL du navigateur en temps réel. 
+    // Dès que l'adresse change, il cherche la règle <Route> correspondante ci-dessous.
+    <Routes>
+      
+      {/* ─── ENCAPSULATION PAR LE LAYOUT (Routes imbriquées) ───
+          Remarquez que cette route n'a pas de "path" (chemin). Elle sert de cadre global.
+          Toutes les routes écrites à l'intérieur vont automatiquement hériter du composant <Layout />.
+          Cela signifie que la Navbar et le Footer entourent toutes les pages listées ci-dessous ! */}
+      <Route element={<Layout />}>
+        
+        {/* RÈGLE 1 : La Page d'accueil
+            Si l'adresse est juste la racine du site (ex: http://localhost:5173/) */}
+        <Route path="/" element={<HomePage />} />
+        
+        {/* RÈGLE 2 : La Page des résultats de recherche
+            Si l'adresse est '/resultats' (ex: http://localhost:5173/resultats?ville=Brazzaville) */}
+        <Route path="/resultats" element={<ResultatsPage />} />
+        
+        {/* RÈGLE 3 : La Fiche détaillée (Route dynamique)
+            Le symbole ":id" est une variable magique. Il dit à React : "Accepte n'importe quel chiffre ou identifiant après /logements/".
+            Si l'URL est '/logements/4', React affiche la page FichePage, et cette page saura qu'elle doit charger le logement numéro 4. */}
+        <Route path="/logements/:id" element={<FichePage />} />
+        
+        {/* RÈGLE 4 : La Page de publication d'annonce
+            Si l'adresse est '/publier' (ex: http://localhost:5173/publier) */}
+        <Route path="/publier" element={<PublierPage />} />
+        
+        {/* RÈGLE 5 : La Page d'inscription
+            Si l'adresse est '/inscription' (ex: http://localhost:5173/inscription) */}
+        <Route path="/inscription" element={<InscriptionPage />} />
+        
+      </Route>
+      
+    </Routes>
+  );
 }
 
-export default App
+export default App;

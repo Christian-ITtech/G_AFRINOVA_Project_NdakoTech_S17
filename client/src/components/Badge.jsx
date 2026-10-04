@@ -4,7 +4,6 @@
 // Cet objet sert de table de correspondance (mapping).
 // Pour chaque clé (ex: 'disponible'), on associe un tableau contenant :
 // [0] Le texte à afficher à l'écran, [1] La classe CSS de couleur correspondante.
-//reel ndoukou
 const CONFIG = {
   disponible: ['Disponible', 'badge-dispo'],
   occupe: ['Occupé', 'badge-occupe'],
