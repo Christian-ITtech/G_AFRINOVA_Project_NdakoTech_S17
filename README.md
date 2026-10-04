@@ -1,384 +1,296 @@
-# NDAKO TECH : API Backend
+# NDAKO TECH
 
-API REST de la plateforme de recherche de logements à **Brazzaville** et **Pointe-Noire** : recherche filtrée, fiche d'un logement et liste des quartiers. Loyer ferme, aucune commission.
+**Trouver un logement à Brazzaville et Pointe-Noire, sans commission et sans intermédiaire.**
+Le chercheur filtre les annonces, consulte une fiche transparente (loyer ferme, statut daté, badge « Bien vérifié ») et contacte directement le gestionnaire par WhatsApp ou par téléphone.
+
+![NDAKO TECH](./server/src/assets/logo-ndakotech.svg)!
 
 | | |
 |---|---|
-| **Stack** | Node.js 18+, Express 5 (ES modules), PostgreSQL (`pg`) |
-| **Port** | `5000` |
-| **URL de base** | `http://localhost:5000/api` |
-| **Accès** | Lecture seule, sans authentification |
+| **Projet** | Plateforme de recherche de logements, version MVP1 |
+| **Villes couvertes** | Brazzaville, Pointe-Noire (République du Congo) |
+| **Front-end** | React, Vite, React Router |
+| **Back-end** | Node.js, Express 5, PostgreSQL |
+| **Équipe** | Squad 1, formation Fullstack à Akieni Academy : 7 développeurs |
 
-**Sommaire** : [Démarrage](#démarrage-rapide) · [Configuration](#variables-denvironnement) · [Structure](#structure) · [Base de données](#base-de-données) · [Référence API](#référence-api) · [Règles de gestion](#règles-de-gestion) · [Tests Postman](#tests-postman) · [Workflow Git](#workflow-git) · [Limites connues](#limites-connues) · [Dépannage](#dépannage)
+**Sommaire** : [Présentation](#présentation) · [Fonctionnalités](#fonctionnalités-du-mvp1) · [Architecture](#architecture) · [Démarrage](#démarrage-rapide) · [Documentation](#documentation) · [API](#api-en-bref) · [Équipe](#léquipe) · [Workflow Git](#workflow-git) · [Qualité](#qualité-et-tests) · [Déploiement](#déploiement) · [Sécurité](#sécurité) · [Feuille de route](#feuille-de-route) · [Dépannage](#dépannage)
+
+---
+
+## Présentation
+
+Chercher un logement au Congo reste difficile : annonces dispersées, prix qui changent selon l'interlocuteur, biens déjà occupés, intermédiaires non certifiés, risques d'arnaque. NDAKO TECH répond avec quelques principes simples :
+
+| Principe | Ce que ça signifie |
+|---|---|
+| **Loyer ferme** | Le loyer affiché est le loyer réel : aucun frais caché, aucune commission |
+| **Statut daté** | Chaque bien est Disponible ou Occupé, avec la date de dernière mise à jour |
+| **Contact direct** | WhatsApp ou appel vers le gestionnaire, avec un message prérempli mentionnant le bien |
+| **Biens vérifiés** | Un badge signale les annonces contrôlées par l'équipe |
+| **Informations honnêtes** | Une annonce sans photo est signalée « incomplète », une caution inconnue est indiquée comme « à confirmer » |
+
+## Fonctionnalités du MVP1
+
+Périmètre défini par la spécification du produit (SPEC Immo-Congo, version 2).
+
+| Code | Fonctionnalité | Statut |
+|---|---|---|
+| EF-01 | Recherche par filtres : ville, quartier, loyer maximum, eau courante, compteur électrique | Livré |
+| EF-02 | Liste des résultats : photo, loyer en FCFA, quartier, statut | Livré |
+| EF-03 | Fiche logement : galerie, loyer, équipements, statut daté, contact | Livré |
+| EF-04 | Statut Disponible ou Occupé avec date ; les biens occupés sont exclus de la recherche | Livré |
+| EF-05 | Contact direct par WhatsApp et appel, désactivé sur un bien occupé | Livré |
+| EF-06 | Badge « Bien vérifié » (marquage dans les données, sans contrôle automatique) | Livré |
+| EF-12 | Formulaire de publication d'annonce | Vitrine : n'enregistre rien |
+| EF-13 | Connexion annonceur | Vitrine : aucune création de compte |
+
+---
+
+## Architecture
+
+Le projet contient **deux applications indépendantes** dans un même dépôt : le front React et l'API Express. Elles communiquent en HTTP, au format JSON.
+
+```mermaid
+flowchart LR
+    U[Navigateur] -->|1. page| F[Front React<br/>client, port 5173]
+    U -->|2. fetch /api| A[API Express<br/>server, port 5000]
+    A -->|3. SQL| D[(PostgreSQL<br/>port 5432)]
+    A -.->|/images| P[Photos<br/>server/public/images]
+```
+
+```
+G_AFRINOVA_Project_NdakoTech_S17/
+├── client/                        # Application React (voir client/README.md)
+│   ├── docs/accueil.png
+│   └── src/                       # api, components, pages, utils, index.css, pages.css
+├── server/                        # API Express (voir server/README.md)
+│   ├── public/images/             # Photos des logements
+│   ├── src/                       # routes, controllers, models, middlewares, config
+│   ├── schema.sql                 # Schéma PostgreSQL
+│   ├── seed.sql                   # Données de démonstration
+│   ├── Diagram ER.png             # Diagramme entité-relation
+│   └── NdakoTech_postman_collection.json
+├── docs/                          # Documents du projet (guide de déploiement)
+├── .gitignore
+└── README.md                      # Ce fichier
+```
+
+| Brique | Dossier | Port | Technologies |
+|---|---|---|---|
+| Front-end | `client/` | 5173 | React, Vite, React Router, CSS à variables |
+| API | `server/` | 5000 | Node.js, Express 5 (ES modules), `pg`, CORS, dotenv |
+| Base de données | `server/schema.sql` | 5432 | PostgreSQL : 4 tables (`utilisateur`, `logement`, `photo`, `signalement`) |
 
 ---
 
 ## Démarrage rapide
 
-Prérequis : **Node.js 18+** et **PostgreSQL**.
+Prérequis : **Node.js 20.19+ ou 22.12+**, **PostgreSQL** et **Git**.
 
 ```bash
-# 1. Base de données : créer une base vide, puis charger le schéma et les données
-psql -d <nom_base> -f schema.sql
-psql -d <nom_base> -f seed.sql
+git clone <url-du-depot>
+cd G_AFRINOVA_Project_NdakoTech_S17
+```
 
-# 2. Serveur
-cp .env.example .env         # puis renseigner les valeurs
+**1. Base de données**
+
+```bash
+psql -U postgres -h localhost -c 'CREATE DATABASE "Immobilier_db";'
+psql -U postgres -h localhost -d Immobilier_db -f server/schema.sql
+psql -U postgres -h localhost -d Immobilier_db -f server/seed.sql
+```
+
+Les guillemets autour de `Immobilier_db` conservent la majuscule du nom. `schema.sql` ne se lance qu'une fois sur une base vide ; `seed.sql` vide les tables avant de les remplir.
+
+**2. API** (premier terminal)
+
+```bash
+cd server
+cp .env.example .env         # puis renseigner DB_USER, DB_PASSWORD, DB_NAME...
 npm install
 npm run dev                  # http://localhost:5000
 ```
 
 La console doit afficher `Serveur lancé sur http://localhost:5000`, puis `Connexion à la base de données réussie`.
 
-| Script | Commande | Usage |
-|---|---|---|
-| `npm run dev` | `nodemon src/server.js` | Développement, redémarrage automatique |
-| `npm start` | `node src/server.js` | Production |
+**3. Front** (second terminal)
 
-> `schema.sql` crée des types et des tables : il ne se relance pas sur une base déjà initialisée (recréer la base). `seed.sql` **vide les tables** avant de les remplir et peut être relancé à volonté.
-
-## Variables d'environnement
-
-Fichier `server/.env`, **jamais commité** (il contient le mot de passe de la base). Seul `.env.example` est versionné.
-
-| Variable | Rôle | Exemple |
-|---|---|---|
-| `PORT` | Port de l'API (défaut `5000`) | `5000` |
-| `CLIENT_URL` | Origine autorisée par CORS, sans `/` final (défaut `http://localhost:5173`) | `http://localhost:5173` |
-| `DB_HOST` | Hôte PostgreSQL | `localhost` |
-| `DB_PORT` | Port PostgreSQL | `5432` |
-| `DB_USER` | Utilisateur de la base | `postgres` |
-| `DB_PASSWORD` | Mot de passe de la base | `votre_mot_de_passe` |
-| `DB_NAME` | Nom de la base | `Immobilier_db` |
-| `NODE_ENV` | Facultatif. En `production`, les erreurs 500 ne détaillent plus la cause | `production` |
-
-## Structure
-
-```
-server/
-├── public/images/                 # Photos des logements, servies sur /images/...
-├── schema.sql                     # Types, tables, index, triggers
-├── seed.sql                       # Données de démonstration
-├── Diagram ER.png                 # Diagramme entité-relation
-├── .env.example
-└── src/
-    ├── server.js                  # Point d'entrée : charge .env, lance l'écoute
-    ├── app.js                     # CORS, JSON, /images, /api, 404, erreurs
-    ├── config/database.js         # Pool PostgreSQL + test de connexion
-    ├── routes/
-    │   ├── index.js               # /api, /api/hello, monte les routes ci-dessous
-    │   ├── logementRoute.js       # /api/logements
-    │   └── quartierRoute.js       # /api/quartiers
-    ├── controllers/               # logementController.js, quartierController.js
-    ├── models/logementModel.js    # Requêtes SQL (listerTous, rechercher, trouverParId, quartiersParVille)
-    └── middlewares/               # validateRecherche.js, validateId.js, errorHandler.js
+```bash
+cd client
+cp .env.example .env         # VITE_API_URL=http://localhost:5000/api
+npm install
+npm run dev                  # http://localhost:5173
 ```
 
-Flux d'une requête : **route** → **validation** (qui construit `req.filtres`) → **contrôleur** → **modèle** (SQL paramétré) → JSON. Les valeurs de l'utilisateur ne sont jamais concaténées dans le SQL, et le tri passe par une liste blanche.
+**4. Vérifier**
+
+| Adresse | Résultat attendu |
+|---|---|
+| `http://localhost:5000/api/hello` | Un message JSON |
+| `http://localhost:5000/api/logements?ville=Brazzaville` | 6 logements |
+| `http://localhost:5000/images/studio-bacongo-1.jpg` | Une photo (si le fichier est présent) |
+| `http://localhost:5173` | La page d'accueil du site |
+
+Les `.env` ne sont **jamais** commités : seuls les `.env.example` le sont.
 
 ---
 
-## Base de données
+## Documentation
 
-![Diagramme ER](./Diagram%20ER.png)
-
-| Table | Rôle | Colonnes principales |
-|---|---|---|
-| `utilisateur` | Gestionnaire du bien (contact) | `nom`, `prenom`, `telephone` (unique), `statut` |
-| `logement` | Annonce | `titre`, `ville`, `quartier`, `adresse`, `type_bien`, `loyer`, `caution_mois`, `eau_courante`, `compteur_electrique`, `statut`, `verifie`, `date_mise_a_jour` |
-| `photo` | Photos d'un logement | `logement_id`, `url`, `ordre` |
-| `signalement` | Signalements d'annonces (table prête, **aucune route pour l'instant**) | `logement_id`, `motif`, `statut` |
-
-**Relations** : `utilisateur` 1-N `logement` 1-N `photo` et `signalement`. Suppression en cascade (utilisateur, logement, puis photo et signalement).
-
-| Type énuméré | Valeurs |
+| Document | Contenu |
 |---|---|
-| `type_bien` | `appartement`, `maison`, `studio`, `chambre`, `villa`, `autre` |
-| `statut_logement` | `disponible`, `occupe` |
-| `statut_signalement` | `nouveau`, `en_cours`, `traite`, `rejete` |
-| `motif_signalement` | `fausse_information`, `prix_incorrect`, `logement_inexistant`, `photo_incorrecte`, `annonce_deja_occupee`, `autre` |
+| [`server/README.md`](./server/README.md) | API : routes, paramètres, réponses, erreurs, base de données, règles de gestion, tests, limites connues |
+| [`client/README.md`](./client/README.md) | Front : architecture, pages, composants, charte graphique, conventions |
+| [`server/Diagram ER.png`](./server/Diagram%20ER.png) | Diagramme entité-relation |
+| `server/NdakoTech_postman_collection.json` | Collection Postman : 26 requêtes qui testent toute l'API |
+| [`docs/Guide_Deploiement_Render_NdakoTech.pdf`](./docs/Guide_Deploiement_Render_NdakoTech.pdf) | Guide de déploiement pas à pas sur Render |
 
-**Contraintes** : `loyer >= 0` ; `caution_mois >= 0` ou `NULL` (= caution à confirmer) ; `UNIQUE (logement_id, ordre)` sur `photo` (`ordre = 0` est la photo de couverture) ; `updated_at` mis à jour par des triggers.
+## API en bref
 
-**Images** : la base ne stocke que le **chemin** (`/images/<fichier>`). Les fichiers sont dans `server/public/images/`, servis par Express. Le nom enregistré dans `seed.sql` doit être identique au nom du fichier, casse et extension comprises.
+URL de base : `http://localhost:5000/api`. Toutes les routes sont en lecture seule (`GET`).
+
+| Endpoint | Rôle |
+|---|---|
+| `/hello` | Test de communication |
+| `/quartiers?ville=` | Quartiers d'une ville |
+| `/logements?ville=` | Recherche filtrée : `quartier`, `loyer_max`, `type_bien`, `eau_courante`, `compteur_electrique`, `tri` |
+| `/logements/tous` | Liste complète, tous statuts |
+| `/logements/:id` | Fiche détaillée, avec contact si le bien est disponible |
+
+`ville` est obligatoire pour la recherche. Les erreurs de validation renvoient un `400` avec un objet `champs` indexé par paramètre. La référence complète est dans [`server/README.md`](./server/README.md).
 
 ---
 
-## Référence API
+## L'équipe
 
-Toutes les routes sont en `GET` et répondent en JSON.
+NDAKO TECH est construit par **sept développeurs**, répartis en deux équipes. Chacun est responsable d'une partie bien définie, ce qui permet de travailler en parallèle sans se marcher dessus.
 
-| Endpoint | Rôle | Fonctionnalité |
+### Back-end (API et base de données)
+
+| Développeur | Responsabilité | Branches |
 |---|---|---|
-| `/api` | Présentation de l'API (message, version) | |
-| `/api/hello` | Test de communication | |
-| `/api/quartiers?ville=` | Quartiers d'une ville | F1 |
-| `/api/logements?ville=` | Recherche filtrée et triée | F1, F2, F9 |
-| `/api/logements/tous` | Liste complète, tous statuts | |
-| `/api/logements/:id` | Fiche détaillée | F3, F4, F6 |
+| **Christian** | Administrateur du dépôt. Socle du serveur, base de données (schéma, seed, images), README et déploiement | `chore/back-socle`, `feature/back-base-donnees`, `docs/back-readme`, `feature/back-deploiement` |
+| **Marlong** | Recherche et liste des logements, tests Postman | `feature/back-recherche`, `test/back-postman` |
+| **Lorion** | Fiche logement et quartiers par ville | `feature/back-fiche-logement`, `feature/back-quartiers` |
 
-### `GET /api` et `GET /api/hello`
+### Front-end (interface React)
 
-`/api` renvoie `{ message, version, auteur }`. `/api/hello` renvoie `{ "message": "Bonjour depuis Express !" }` : route d'exemple pour tester la liaison avec React.
-
-### `GET /api/quartiers`
-
-Alimente la liste déroulante des quartiers.
-
-| Paramètre | Requis | Valeurs |
-|---|---|---|
-| `ville` | Oui | `Brazzaville` ou `Pointe-Noire` (casse ignorée) |
-
-```bash
-curl "http://localhost:5000/api/quartiers?ville=Brazzaville"
-```
-
-```json
-{ "ville": "Brazzaville", "quartiers": ["Bacongo", "Makélékélé", "..."] }
-```
-
-Les quartiers sont distincts et triés, tous statuts de logement confondus. Erreur `400` si `ville` est absente ou inconnue.
-
-### `GET /api/logements`
-
-Recherche de logements. Les logements **occupés sont exclus** (RG-01). Sans `quartier` ni `loyer_max`, la recherche porte sur toute la ville. Les filtres se **cumulent** (ET).
-
-| Paramètre | Requis | Description |
-|---|---|---|
-| `ville` | **Oui** | `Brazzaville` ou `Pointe-Noire` (casse ignorée) |
-| `quartier` | Non | Un quartier (ex. `Bacongo`, `Tié-Tié`), casse ignorée |
-| `loyer_max` | Non | Nombre **strictement positif** en FCFA (`100000` ou `100 000`). Vide : ignoré (RG-02) |
-| `type_bien` | Non | `appartement`, `maison`, `studio`, `chambre`, `villa` ou `autre` |
-| `eau_courante` | Non | `true` : uniquement les biens avec eau courante |
-| `compteur_electrique` | Non | `true` : uniquement les biens avec compteur électrique |
-| `tri` | Non | `loyer_asc` : loyer croissant (F9). Sans `tri` : mises à jour les plus récentes d'abord, dates inconnues en dernier |
-
-```bash
-curl "http://localhost:5000/api/logements?ville=Pointe-Noire&loyer_max=130000&tri=loyer_asc"
-curl "http://localhost:5000/api/logements?ville=Brazzaville&type_bien=studio&eau_courante=true&compteur_electrique=true"
-```
-
-```json
-{
-  "total": 3,
-  "message": null,
-  "resultats": [
-    {
-      "id": 8,
-      "titre": "Appartement 2 pièces Tié-Tié",
-      "ville": "Pointe-Noire",
-      "quartier": "Tié-Tié",
-      "type_bien": "appartement",
-      "loyer": 120000,
-      "statut": "disponible",
-      "verifie": true,
-      "date_mise_a_jour": "2026-09-29T10:00:00.000Z",
-      "photo_principale": "/images/appartement-tie-tie-1.jpg",
-      "incomplet": false,
-      "date_inconnue": false
-    }
-  ]
-}
-```
-
-| Champ | Signification |
-|---|---|
-| `loyer` | Nombre (FCFA) |
-| `photo_principale` | Première photo du bien, `null` s'il n'en a aucune |
-| `incomplet` | `true` si le bien n'a aucune photo (RG-03) |
-| `date_inconnue` | `true` si `date_mise_a_jour` est `null` (RG-04) |
-
-La recherche **ne renvoie pas** `eau_courante` ni `compteur_electrique` (voir [Limites connues](#limites-connues)).
-
-**Aucun résultat** : statut `200`, `total: 0`, `resultats: []` et un `message` à afficher :
-`Aucun logement ne correspond à vos critères. Essayez d'élargir votre recherche (autre quartier ou loyer maximum plus élevé).`
-
-### `GET /api/logements/tous`
-
-Liste complète, **sans validation ni filtre**, **y compris les biens occupés** (la clause RG-01 est commentée dans le modèle). Triée par mise à jour décroissante.
-
-```json
-{ "total": 13, "resultats": [ { "id": 1, "titre": "...", "ville": "...", "quartier": "...", "type_bien": "...", "loyer": 75000, "eau_courante": true, "compteur_electrique": true, "statut": "disponible", "verifie": true, "date_mise_a_jour": "...", "photo_principale": "...", "incomplet": false, "date_inconnue": false } ] }
-```
-
-Cette route doit rester **déclarée avant `/:id`**, sinon `tous` serait interprété comme un identifiant.
-
-### `GET /api/logements/:id`
-
-Fiche complète. Un bien **occupé** reste consultable, mais sans contact. `id` doit être un entier strictement positif.
-
-```bash
-curl "http://localhost:5000/api/logements/1"
-```
-
-```json
-{
-  "id": 1,
-  "titre": "Studio meublé Bacongo",
-  "description": "Studio meublé, proche des transports.",
-  "ville": "Brazzaville",
-  "quartier": "Bacongo",
-  "adresse": "Rue des Palmiers",
-  "type_bien": "studio",
-  "loyer": 75000,
-  "caution_mois": 2,
-  "cout_entree": 225000,
-  "message_caution": null,
-  "eau_courante": true,
-  "compteur_electrique": true,
-  "statut": "disponible",
-  "verifie": true,
-  "date_mise_a_jour": "2026-10-01T10:00:00.000Z",
-  "date_inconnue": false,
-  "photos": ["/images/studio-bacongo-1.jpg", "/images/studio-bacongo-2.jpg"],
-  "incomplet": false,
-  "champs_manquants": [],
-  "gestionnaire": { "nom": "Mabiala", "prenom": "Jean" },
-  "contact": {
-    "telephone": "+242060000001",
-    "appel": "tel:+242060000001",
-    "whatsapp": "https://wa.me/242060000001"
-  }
-}
-```
-
-| Champ | Description |
-|---|---|
-| `cout_entree` | `loyer x (1 + caution_mois)`, arrondi (RG-07). `null` si la caution est inconnue |
-| `message_caution` | `Caution à confirmer avec le propriétaire du bien` si `caution_mois` est `null` (RG-08), sinon `null` |
-| `champs_manquants` | Parmi `description`, `quartier`, `adresse`, `date_mise_a_jour`, ceux qui sont vides (à afficher « non renseigné ») |
-| `photos` | Tableau de chemins relatifs, classés par `ordre`. À préfixer par l'adresse du serveur |
-| `incomplet` | `true` si le bien n'a aucune photo (RG-03) |
-| `contact` | `null` si le bien est **occupé**. Le lien WhatsApp ne contient pas de message prérempli |
-
-### Erreurs
-
-| Code | Cas | Corps |
-|---|---|---|
-| `400` | Paramètre invalide | `{ "erreur": "Paramètres invalides.", "champs": { "<paramètre>": "<message>" } }` |
-| `404` | Logement inexistant | `{ "erreur": "Ce logement n'existe pas." }` |
-| `404` | Route inexistante | `{ "erreur": "Route introuvable." }` |
-| `500` | Erreur serveur ou base | `{ "erreur": "Une erreur est survenue sur le serveur.", "detail": "..." }` (`detail` absent en production) |
-
-Cas de `400` : `ville` absente ou non prise en charge (`/logements`, `/quartiers`) ; `loyer_max` non numérique ou inférieur ou égal à 0 ; `type_bien` ou `tri` inconnu ; `id` non entier ou inférieur ou égal à 0. L'objet `champs` contient une clé par paramètre fautif (ex. `champs.loyer_max`).
-
----
-
-## Règles de gestion
-
-| Code | Règle |
-|---|---|
-| RG-01 | Un logement **occupé** n'apparaît pas dans la recherche |
-| RG-02 | `loyer_max` exclut tout bien au-dessus du montant ; une valeur vide est ignorée |
-| RG-03 | Un logement **sans photo** est `incomplet` |
-| RG-04 | Une `date_mise_a_jour` nulle est signalée par `date_inconnue` |
-| RG-07 | Coût d'entrée = `loyer x (1 + caution_mois)` |
-| RG-08 | Caution inconnue : `cout_entree` nul et message « Caution à confirmer… » |
-| | Le contact (`tel:`, WhatsApp) n'est renvoyé que si le bien est **disponible** |
-
-## Données de démonstration
-
-`seed.sql` charge **3 gestionnaires, 13 logements et 24 photos**. Les identifiants sont stables (la numérotation repart de zéro à chaque exécution).
-
-| id | Logement | Ville | Cas particulier |
+| Développeur | Responsabilité | Dossier | Branche |
 |---|---|---|---|
-| 1 | Studio meublé Bacongo | Brazzaville | Vérifié, complet (cas nominal) |
-| 2 | Appartement 3 pièces Poto-Poto | Brazzaville | |
-| 3 | Chambre simple Talangaï | Brazzaville | |
-| 4 | Maison 4 pièces Moungali | Brazzaville | **Occupé** |
-| 5 | Villa standing Plateau des 15 ans | Brazzaville | Vérifié |
-| 6 | Studio Ouenzé | Brazzaville | **Sans photo**, caution inconnue |
-| 7 | Chambre Makélékélé | Brazzaville | **Date inconnue** |
-| 8 | Appartement 2 pièces Tié-Tié | Pointe-Noire | Vérifié |
-| 9 | Studio Loandjili | Pointe-Noire | |
-| 10 | Maison Mongo-Mpoukou | Pointe-Noire | **Occupé**, vérifié |
-| 11 | Chambre Lumumba | Pointe-Noire | |
-| 12 | Villa Ngoyo | Pointe-Noire | |
-| 13 | Appartement Mvou-Mvou | Pointe-Noire | Caution inconnue |
+| **Réel** | Composants réutilisables | `components` | `feature/front-components` |
+| **Gédéon** | Couche d'appel à l'API | `api` | `feature/front-api` |
+| **guyverma** | Pages de l'application | `pages` | `feature/front-pages` |
+| **gaevie** | Style et charte graphique | `index.css`, `pages.css` | `feature/front-style` |
 
-Recherche attendue : **6** biens à Brazzaville et **5** à Pointe-Noire (les 2 occupés sont exclus).
-
----
-
-## Tests Postman
-
-Importer `NdakoTech_postman_collection.json`. La variable `baseUrl` vaut `http://localhost:5000/api`. **Lancer `seed.sql` avant les tests.**
-
-| Dossier | Requêtes | Ce qui est vérifié |
-|---|---|---|
-| 0 - Général | 1 | `/hello` répond |
-| 1 - Quartiers | 4 | Les deux villes, `400` sans ville ou avec une ville inconnue |
-| 2 - Recherche et liste | 9 | Toute la ville (6 et 5 biens), quartier, loyer max, tri croissant, loyer vide ignoré, bien sans photo, aucun résultat |
-| 3 - Fiche logement | 6 | Fiche complète (id 1), sans photo ni caution (id 6), occupé sans contact (id 4), date inconnue (id 7), `404`, `400` |
-| 4 - Cas d'erreur de validation | 6 | `loyer_max` invalide, ville absente ou inconnue, tri inconnu, route inexistante |
-
-Total : **26 requêtes**, toutes doivent passer avant une Pull Request. Non couverts par la collection : `GET /api`, `/logements/tous` et les filtres `type_bien`, `eau_courante`, `compteur_electrique`.
+Les détails de chaque partie sont dans le README du dossier concerné. Toute modification **en dehors de sa partie** se discute d'abord avec son responsable.
 
 ---
 
 ## Workflow Git
 
-Branches principales : `main` (stable, déployée) et `develop` (intégration). **Aucun push direct** sur l'une ni l'autre : tout passe par une Pull Request.
+La branche **`main` est protégée** : on n'y pousse jamais directement. Tout le code y entre par une **Pull Request**, relue et approuvée par **un autre développeur**, puis **fusionnée dans `main` juste après la review**.
 
-**Nom d'une branche** : `type/back-description-courte`, en minuscules, avec des tirets, sans espace ni accent. Elle part de `develop` (sauf `hotfix/`, qui part de `main`).
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/front-pages      # ou feature/back-recherche, etc.
 
-| Préfixe | Usage | Exemple |
+# ... coder, tester ...
+
+git add <fichiers>
+git status                               # aucun .env, aucun node_modules
+git commit -m "feat: ajout de la page de résultats"
+git push -u origin feature/front-pages
+```
+
+1. Ouvrir une **Pull Request vers `main`** sur GitHub, avec une courte description et la façon de la tester.
+2. Demander la **review d'un autre développeur** : jamais l'auteur lui-même.
+3. Corriger les remarques sur la même branche.
+4. Après approbation, **fusionner dans `main`** immédiatement, puis supprimer la branche.
+5. Récupérer `main` (`git pull origin main`) avant de commencer le travail suivant.
+
+| Préfixe de branche | Usage | Exemples |
 |---|---|---|
-| `feature/` | Nouvelle fonctionnalité | `feature/back-recherche` |
-| `fix/` | Correction de bug | `fix/back-filtre-loyer` |
+| `feature/` | Nouvelle fonctionnalité | `feature/back-recherche`, `feature/front-components` |
+| `fix/` | Correction de bug, y compris urgente | `fix/back-filtre-loyer` |
 | `chore/` | Configuration, dépendances | `chore/back-socle` |
 | `docs/` | Documentation | `docs/back-readme` |
 | `test/` | Tests | `test/back-postman` |
-| `hotfix/` | Correction urgente depuis `main` | `hotfix/back-connexion-bd` |
 
-```bash
-git checkout develop && git pull origin develop
-git checkout -b feature/back-recherche
-# ... coder, tester avec Postman ...
-git add <fichiers>
-git commit -m "feat: ajout de la recherche par quartier et loyer maximum"
-git push -u origin feature/back-recherche
-# Pull Request vers develop, relue par un autre membre, puis suppression de la branche
-```
+Nom en minuscules, avec des tirets, sans espace ni accent, préfixé par `back-` ou `front-` selon la partie. **Messages de commit** : `type: description courte`, avec `feat`, `fix`, `docs`, `chore`, `test` ou `refactor`.
 
-**Commits** : `type: description courte` avec `feat`, `fix`, `docs`, `chore`, `test` ou `refactor`.
+**Règles d'équipe**
 
-| # | Tâche | Branche | Qui |
-|---|---|---|---|
-| 1 | Socle : app, serveur, connexion BD, gestion d'erreurs | `chore/back-socle` | Christian |
-| 2 | Base de données : schéma, seed, images | `feature/back-base-donnees` | Christian |
-| 3 | Recherche et liste (F1, F2, F9) | `feature/back-recherche` | Marlong |
-| 4 | Fiche logement (F3, F4, F6) | `feature/back-fiche-logement` | Lorion |
-| 5 | Quartiers par ville (F1) | `feature/back-quartiers` | Lorion |
-| 6 | Tests Postman | `test/back-postman` | Marlong |
-| 7 | README et déploiement | `docs/back-readme`, `feature/back-deploiement` | Christian |
+- Une Pull Request = un sujet, petite et relue vite.
+- Ne jamais commiter `.env`, `node_modules` ni de secret. Lire `git status` avant chaque commit.
+- Se mettre à jour depuis `main` chaque jour pour éviter les gros conflits.
+- Fichiers partagés du back (`logementModel.js`, `logementController.js`, `logementRoute.js`) : chacun travaille dans **sa propre section**.
+- En cas de conflit sur un fichier qui n'est pas le sien, parler d'abord à son responsable.
 
-Ordre conseillé : 1 et 2, puis 3, 4 et 5 en parallèle, puis 6 et 7.
+## Qualité et tests
 
-**Règles d'équipe** : une Pull Request = une tâche, relue par un autre membre ; ne jamais commiter `.env` ni `node_modules` (lire `git status` avant chaque commit) ; se mettre à jour chaque jour depuis `develop` ; `logementModel.js`, `logementController.js` et `logementRoute.js` sont partagés entre Marlong et Lorion : chacun ajoute ses fonctions dans **sa propre section** et fusionne par petites Pull Requests ; déploiement depuis `main` uniquement, variables d'environnement configurées sur l'hébergeur.
+| Contrôle | Comment | Qui |
+|---|---|---|
+| API | Collection Postman : 26 requêtes, à lancer après `seed.sql` | Back-end |
+| Build du front | `cd client && npm run build` sans erreur | Front-end |
+| Style du code | `npm run lint` dans `client/` | Front-end |
+| Parcours manuel | Recherche, fiche, bien occupé (contact désactivé), bien sans photo | Tous |
+
+**Avant d'ouvrir une Pull Request :**
+
+- [ ] Le serveur démarre sans erreur et la collection Postman passe (si le back est concerné)
+- [ ] `npm run build` réussit (si le front est concerné)
+- [ ] Les écrans touchés s'affichent avec l'API lancée
+- [ ] Aucun `.env` ni `node_modules` dans le commit
+- [ ] Le README est mis à jour si le comportement ou une route a changé
 
 ---
 
-## Limites connues
+## Déploiement
 
-| # | Constat | Piste |
+Le projet se déploie sur **Render**, en trois services :
+
+| Service | Dossier | Réglages principaux |
 |---|---|---|
-| 1 | `rechercher` ne sélectionne pas `eau_courante` ni `compteur_electrique` : une liste de résultats ne peut pas afficher les équipements | Ajouter ces deux colonnes au `SELECT` de `rechercher` |
-| 2 | `eau_courante` et `compteur_electrique` : toute valeur non vide autre que `true` est lue comme `false` (filtre inversé, sans erreur). La branche d'erreur prévue pour `false` n'est jamais atteinte | N'accepter que `true`/`false` et renvoyer `400` sinon |
-| 3 | `/logements/tous` renvoie aussi les biens occupés | Décommenter la clause `WHERE` du modèle, ou garder le comportement et filtrer côté front |
-| 4 | `react-router-dom` figure dans les dépendances de `server/package.json` : c'est une dépendance du front | `npm uninstall react-router-dom` |
-| 5 | Le pool PostgreSQL n'a ni `DATABASE_URL` ni SSL : une base distante (hébergée) risque d'être refusée | Prévoir `ssl` dans `config/database.js` pour le déploiement |
-| 6 | Si la base est injoignable, le serveur démarre quand même et seul un message est affiché ; les requêtes renvoient ensuite `500` | Lire la console au démarrage |
+| PostgreSQL | | Base créée en ligne, puis `schema.sql` et `seed.sql` chargés |
+| Web Service (API) | `server` | Build `npm install`, démarrage `npm start`, variables `DB_*`, `CLIENT_URL`, `NODE_ENV` |
+| Static Site (front) | `client` | Build `npm install && npm run build`, publication `dist`, variable `VITE_API_URL`, règle `/*` vers `/index.html` |
+
+On déploie depuis **`main` uniquement**. Les variables d'environnement se configurent sur Render, jamais dans le dépôt. La procédure complète, avec les limites du plan gratuit et le dépannage, est dans le guide PDF du dossier `docs/`.
+
+## Sécurité
+
+- Aucun secret dans le dépôt : mots de passe et adresses de base vont dans les `.env` locaux, ou dans les variables de l'hébergeur.
+- Les requêtes SQL sont **paramétrées** et le tri passe par une liste blanche : aucune valeur utilisateur n'est insérée dans le SQL.
+- CORS est limité à l'adresse du front (`CLIENT_URL`).
+- En production, `NODE_ENV=production` masque le détail technique des erreurs 500.
+- Un secret qui a fuité est considéré comme compromis : on change le mot de passe, la suppression du fichier ne suffit pas.
+- L'API est en lecture seule dans cette version : aucune donnée n'est modifiable depuis le site.
+
+---
+
+## Feuille de route
+
+| Évolution | Point de départ dans le code |
+|---|---|
+| Publication réelle d'annonces avec envoi de photos | Formulaire de démonstration (EF-12) ; prévoir un stockage externe des photos |
+| Comptes annonceurs et authentification | Écran de connexion de démonstration (EF-13) |
+| Signalement d'annonces par les visiteurs | Table `signalement` déjà créée, aucune route pour l'instant |
+| Vérification des annonces plus rigoureuse | Aujourd'hui, simple marquage `verifie` dans les données |
+| Équipements dans les résultats de recherche | Ajouter `eau_courante` et `compteur_electrique` au `SELECT` de `rechercher` |
+| Base de données distante sécurisée | Prévoir l'option `ssl` dans `config/database.js` |
+
+Les autres limites connues de l'API sont listées dans [`server/README.md`](./server/README.md#limites-connues).
 
 ## Dépannage
 
-| Symptôme | Cause probable | Solution |
-|---|---|---|
-| `ERR_CONNECTION_REFUSED` sur `localhost:5000` | Serveur arrêté ou planté | Lancer `npm run dev` et lire la dernière erreur |
-| `Erreur lors de la connexion à la base de données` | PostgreSQL éteint ou variables `DB_*` fausses | Vérifier `.env` et que PostgreSQL tourne |
-| `Cannot use import statement outside a module` | `"type": "module"` absent de `package.json` | L'ajouter (le backend est en ES modules) |
-| `relation "logement" does not exist` | Tables non créées | Exécuter `schema.sql`, puis `seed.sql` |
-| `type "type_bien" already exists` | `schema.sql` relancé sur une base déjà initialisée | Recréer la base |
-| `Cannot GET /images/...` | Fichier absent ou nom différent de celui du seed | Comparer `server/public/images/` et `seed.sql` |
-| `blocked by CORS policy` côté front | `CLIENT_URL` incorrect | Mettre exactement l'adresse du front, sans `/` final |
-| Résultats inattendus après un test | Base modifiée | Relancer `seed.sql` |
+| Symptôme | Où regarder |
+|---|---|
+| `ERR_CONNECTION_REFUSED` sur `localhost:5000` | L'API n'est pas lancée : `cd server && npm run dev` |
+| Le site s'affiche, mais sans données | `VITE_API_URL` dans `client/.env`, puis relancer `npm run dev` |
+| `blocked by CORS policy` | `CLIENT_URL` dans `server/.env` : exactement `http://localhost:5173`, sans `/` final |
+| Photos cassées | `server/public/images/` : les noms doivent être identiques à ceux de `seed.sql` |
+| `relation "logement" does not exist` | `schema.sql` puis `seed.sql` n'ont pas été exécutés |
+| `Failed to resolve import ...` | Fichier du front absent ou mal nommé : vérifier le chemin et la casse |
+
+Le dépannage détaillé se trouve dans [`server/README.md`](./server/README.md#dépannage) pour l'API et dans [`client/README.md`](./client/README.md#dépannage) pour le front.
