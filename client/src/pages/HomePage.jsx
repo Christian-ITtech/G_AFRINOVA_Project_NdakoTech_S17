@@ -49,7 +49,7 @@ export default function HomePage() {
 
       <section className="section section-blanche">
         <div className="container">
-          <h2 className="section-titre">Comment ça marche ?</h2>
+          <h2 className="section-titre">Votre expérience chez NdakoTech</h2>
           <p className="section-sous-titre">Simple, transparent, sans commission.</p>
           <div className="etapes">
             <div className="etape">
@@ -74,7 +74,7 @@ export default function HomePage() {
               <h3>Vous êtes propriétaire ?</h3>
               <p>Publiez votre bien et touchez des locataires.</p>
             </div>
-            <Link to="/publier" className="bouton bouton-orange">Publier une annonce →</Link>
+            <Link to="/publier" className="bouton bouton-orange">Publier une annonce</Link>
           </div>
         </div>
       </section>

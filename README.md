@@ -258,6 +258,8 @@ Le projet se déploie sur **Render**, en trois services :
 
 On déploie depuis **`main` uniquement**. Les variables d'environnement se configurent sur Render, jamais dans le dépôt. La procédure complète, avec les limites du plan gratuit et le dépannage, est dans le guide PDF du dossier `docs/`.
 
+Lien site : https://ndakotech.onrender.com/
+
 ## Sécurité
 
 - Aucun secret dans le dépôt : mots de passe et adresses de base vont dans les `.env` locaux, ou dans les variables de l'hébergeur.
